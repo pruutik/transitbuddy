@@ -223,7 +223,7 @@
   </script> -->
   </head>
   <body>    
-    <div style="margin: 10px;"><strong>Distance between 2 markers</strong></div>
+    <!-- <div style="margin: 10px;"><strong>Distance between 2 markers</strong></div> -->
     <video id="video" autoplay="true" style="display:none;"></video>
     <!--
 If you are not making an AR application you don't actually have to show the canvas for the webcam
@@ -233,9 +233,9 @@ but everything should still work.
 You can add the "hidden" attribute like below if you want to hide the webcam canvas
 <canvas hidden id="canvas" style="width:640px; height:480px;"></canvas>
 -->
-    <canvas id="canvas" style="width:640px; height:480px;"></canvas>
+    <canvas hidden id="canvas" style="width:640px; height:480px;"></canvas>
 
-    <div id="box" style="background: red; width: 30px; height: 30px; position: absolute"></div>
+    <!-- <div id="box" style="background: red; width: 30px; height: 30px; position: absolute"></div> -->
 <!-- <video id="camera"></video> -->
 <script type="module">
 import { HandLandmarker, FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision";
@@ -472,7 +472,12 @@ function drawId(markers){
 init();
 </script>
 
-<!-- <canvas id="map"></canvas> -->
+<canvas id="map" style="height: 100%; width: 50%;"></canvas>
+<canvas id="drawCanvas" style="height: 100%; width: 50%;"></canvas>
+  <div hidden>
+    <button id="clearButton">Clear</button>
+  </div>
+  <script src="drawing.js"></script>
     
     <div hidden>
       <div class="rectangle" id="smartUI">

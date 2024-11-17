@@ -273,14 +273,19 @@ if (video.readyState === video.HAVE_ENOUGH_DATA){
         showDistance(markers);
       }
 let results = handLandmarker.detectForVideo(video, performance.now());
-console.log(results);
+// console.log(results);
 if (results.landmarks[0]) {
 let indexPos = results.landmarks[0][8]
-let x = indexPos.x * canvas.width
-let y = indexPos.y * canvas.height
-console.log([x, y])
-box.style.left = `${x}px`
-box.style.top = `${y}px`
+let middlePos = results.landmarks[0][13]
+let ratio = Math.sqrt(((results.landmarks[0][5].x-results.landmarks[0][0].x)*canvas.width)**2+((results.landmarks[0][5].y-results.landmarks[0][0].y)*canvas.height)**2)
+console.log(Math.sqrt(((indexPos.x-middlePos.x)*canvas.width/ratio)**2+((indexPos.y-middlePos.y)*canvas.height/ratio)**2));
+if(Math.sqrt(((indexPos.x-middlePos.x)*canvas.width/ratio)**2+((indexPos.y-middlePos.y)*canvas.height/ratio)**2)<1.1){
+  let x = indexPos.x * canvas.width
+  let y = indexPos.y * canvas.height
+  console.log([x, y])
+  box.style.left = `${x}px`
+  box.style.top = `${y}px`
+}
 }
 }
 loop();

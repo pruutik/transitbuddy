@@ -17,7 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <script type="modele" src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js" crossorigin="anonymous"></script>
     
-  <script>
+  <!-- <script>
     var video, canvas, context, imageData, detector, posit;
  
     var markerSize = 150.0; //this should be the real life size in millimetres of your marker
@@ -114,7 +114,7 @@
           d.style.color = "blue";
         }
 
-        updateProxemicButton(distance, 200, 400, 600);
+        // updateProxemicButton(distance, 200, 400, 600);
       }
     };
           
@@ -220,7 +220,7 @@
 
 
     window.onload = onLoad;
-  </script>
+  </script> -->
   </head>
   <body>    
     <div style="margin: 10px;"><strong>Distance between 2 markers</strong></div>
@@ -239,9 +239,13 @@ You can add the "hidden" attribute like below if you want to hide the webcam can
 <!-- <video id="camera"></video> -->
 <script type="module">
 import { HandLandmarker, FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision";
-async function init() {
+
+var canvas, context, imageData, detector, posit;
+
 const video = document.getElementById("video");
 const box = document.getElementById("box");
+
+async function init() {
 navigator.mediaDevices.getUserMedia({ video: true })
 .then(function (stream) {
 video.srcObject = stream;
@@ -258,12 +262,22 @@ runningMode: "video"
 });
 function loop() {
 window.requestAnimationFrame(loop);
+if (video.readyState === video.HAVE_ENOUGH_DATA){
+        snapshot();
+
+        var markers = detector.detect(imageData);
+        drawCorners(markers);
+        drawId(markers);
+
+        drawCornerPosition(markers);
+        showDistance(markers);
+      }
 let results = handLandmarker.detectForVideo(video, performance.now());
-// console.log(results);
+console.log(results);
 if (results.landmarks[0]) {
 let indexPos = results.landmarks[0][8]
-let x = indexPos.x * video.clientWidth
-let y = indexPos.y * video.clientHeight
+let x = indexPos.x * canvas.width
+let y = indexPos.y * canvas.height
 console.log([x, y])
 box.style.left = `${x}px`
 box.style.top = `${y}px`
@@ -271,6 +285,184 @@ box.style.top = `${y}px`
 }
 loop();
 };
+ 
+    var markerSize = 150.0; //this should be the real life size in millimetres of your marker
+
+    function onLoad(){
+      canvas = document.getElementById("canvas");
+      context = canvas.getContext("2d");
+    
+      canvas.width = parseInt(canvas.style.width);
+      canvas.height = parseInt(canvas.style.height);    
+      
+      navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: 'environment' // This tries to get the back facing camera when using a phone
+          }
+        })
+          .then(stream => video.srcObject = stream)
+          .catch(console.error);
+
+        detector = new AR.Detector();
+        posit = new POS.Posit(markerSize, canvas.width);
+
+        requestAnimationFrame(tick);
+      }
+      window.onload = onLoad;
+    
+    // function tick(){
+    //   requestAnimationFrame(tick);
+      
+    //   if (video.readyState === video.HAVE_ENOUGH_DATA){
+    //     snapshot();
+
+    //     var markers = detector.detect(imageData);
+    //     drawCorners(markers);
+    //     drawId(markers);
+
+    //     drawCornerPosition(markers);
+    //     showDistance(markers);
+    //   }
+    // }
+
+    function snapshot(){
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    }
+    
+    function calculateDistance(point1, point2) {
+      const xDiff = point2[0] - point1[0];
+      const yDiff = point2[1] - point1[1];
+      const zDiff = point2[2] - point1[2];
+      
+      return Math.sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
+    }
+function showDistance(markers) {
+      if (markers.length >= 2) {
+        
+        var corner, corners1, corners2;
+        
+        corners1 = markers[0].corners;
+        corners2 = markers[1].corners;
+
+        // Documentation says to center the corners on the canvas
+        for (i = 0; i < corners1.length; ++ i){
+          corner = corners1[i];
+          
+          corner.x = corner.x - (canvas.width / 2);
+          corner.y = (canvas.height / 2) - corner.y;
+        }
+        
+        // Get the estimated 3d position of the marker
+        pose1 = posit.pose(corners1);
+        
+        // Documentation says to center the corners on the canvas
+        for (i = 0; i < corners2.length; ++ i){
+          corner = corners2[i];
+          
+          corner.x = corner.x - (canvas.width / 2);
+          corner.y = (canvas.height / 2) - corner.y;
+        }
+        
+        pose2 = posit.pose(corners2);
+
+        var d = document.getElementById("distance");
+        // pose.bestTranslation first 3 indexes are position
+        var distance = calculateDistance(pose1.bestTranslation, pose2.bestTranslation);
+        d.innerHTML = "Distance: " + distance;
+
+        if (distance > markerSize*2) {
+          d.style.color = "red";
+        } else {
+          d.style.color = "blue";
+        }
+
+        // updateProxemicButton(distance, 200, 400, 600);
+      }
+    };
+function drawCorners(markers){
+      var corners, corner, i, j;
+    
+      context.lineWidth = 3;
+
+      for (i = 0; i !== markers.length; ++ i){
+        corners = markers[i].corners;
+        
+        context.strokeStyle = "red";
+        context.beginPath();
+        
+        for (j = 0; j !== corners.length; ++ j){
+          corner = corners[j];
+          context.moveTo(corner.x, corner.y);
+          corner = corners[(j + 1) % corners.length];
+          context.lineTo(corner.x, corner.y);
+        }
+
+        context.stroke();
+        context.closePath();
+        
+        context.strokeStyle = "green";
+        context.strokeRect(corners[0].x - 2, corners[0].y - 2, 4, 4);
+      }
+    }
+function drawId(markers){
+      var corners, corner, x, y, i, j;
+      
+      context.strokeStyle = "green";
+      context.lineWidth = 1;
+      
+      for (i = 0; i !== markers.length; ++ i){
+        corners = markers[i].corners;
+        
+        x = Infinity;
+        y = Infinity;
+        
+        for (j = 0; j !== corners.length; ++ j){
+          corner = corners[j];
+          
+          x = Math.min(x, corner.x);
+          y = Math.min(y, corner.y);
+        }
+
+        context.strokeText(markers[i].id, x, y-10) // move it up a little so we don't cover the position
+      }
+    }
+    function drawCornerPosition(markers){
+      var corners, corner, x, y, i, j, k, pose;
+      
+      context.strokeStyle = "blue";
+      context.lineWidth = 1;
+      
+      for (i = 0; i !== markers.length; ++ i){
+        corners = markers[i].corners;
+        
+        x = Infinity;
+        y = Infinity;
+        
+        for (j = 0; j !== corners.length; ++ j){
+          corner = corners[j];
+          
+          x = Math.min(x, corner.x);
+          y = Math.min(y, corner.y);
+        }
+
+        // Documentation says to center the corners on the canvas
+        for (k = 0; k < corners.length; ++ k){
+          corner = corners[k];
+          
+          corner.x = corner.x - (canvas.width / 2);
+          corner.y = (canvas.height / 2) - corner.y;
+        }
+        
+        // Get the estimated 3d position of the marker
+        pose = posit.pose(corners);
+        var positionInSpace = pose.bestTranslation;
+        context.strokeText(Math.trunc(positionInSpace[0]) + "," + 
+          Math.trunc(positionInSpace[1]) + "," + 
+          Math.trunc(positionInSpace[2]), x, y)
+      }
+    }
 init();
 </script>
     
@@ -292,56 +484,6 @@ init();
         <button id="proxemicButton">I'm Lonely</button>
       </div>
     </div>
-
-    <!-- <div id="output"></div> -->
-    <div id="map"></div>
-    <script>
-      var map;
-      function initMap() {
-        var directionsService = new google.maps.DirectionsService;
-        map = new google.maps.Map(document.getElementById('map'), {
-          center: {lat: -34.397, lng: 150.644},
-          zoom: 8
-        });
-    
-      var listPos = [{
-          arriveeLat: 48.784, arriveeLng: 2.2743419,
-         departLat: 48.9016, departLng: 2.29873},
-         {arriveeLat: 48.8245306, arriveeLng: 2.40735,
-         departLat: 48.799815, departLng: 2.257289},
-         ];
-      var bounds = new google.maps.LatLngBounds();
-      for (var i = 0; i < listPos.length; i++) {
-    
-        var startPoint = new google.maps.LatLng(listPos[i]['departLat'], listPos[i]['departLng']);
-        var endPoint = new google.maps.LatLng(listPos[i]['arriveeLat'], listPos[i]['arriveeLng']);
-        var directionsDisplay = new google.maps.DirectionsRenderer({map: map, preserveViewport: true});
-        calculateAndDisplayRoute(directionsService, directionsDisplay, startPoint, endPoint, bounds);
-      }
-    
-    }
-    
-    
-      function calculateAndDisplayRoute(directionsService, directionsDisplay, startPoint, endPoint, bounds) {
-        directionsService.route({
-          origin: startPoint,
-          destination: endPoint,
-          travelMode: 'DRIVING'
-        }, function(response, status) {
-          if (status === 'OK') {
-            console.log(response);
-            directionsDisplay.setDirections(response);
-            bounds.union(response.routes[0].bounds);
-            map.fitBounds(bounds);
-          } else {
-            window.alert('Impossible d afficher la route ' + status);
-          }
-        });
-      }
-    
-    </script>
-    <script src="https://cdn.jsdelivr.net/gh/somanchiu/Keyless-Google-Maps-API@v6.8/mapsJavaScriptAPI.js"
-    async defer></script>
 
     
     

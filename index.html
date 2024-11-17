@@ -1,256 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+
+<head>
+    <title>Multiple routes by mode of travel - Azure Maps Web SDK Samples</title>
 
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="https://glitch.com/favicon.ico" />
+    <link rel="shortcut icon" href="/favicon.ico" />
 
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="This tutorial shows how to perform multiple routes for different modes of travel and display them on the map." />
+    <meta name="keywords" content="Microsoft maps, map, gis, API, SDK, services, module, tutorials, routing, directions, route, truck, commercial vehicle" />
+    <meta name="author" content="Microsoft Azure Maps" />
+    <meta name="version" content="1.0" />
+    <meta name="screenshot" content="screenshot.jpg" />
 
-    <link rel="stylesheet" href="/style.css" />
+    <!-- Add references to the Azure Maps Map control JavaScript and CSS files. -->
+    <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" rel="stylesheet" />
+    <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
 
-    <script src="libs/polyfill.js"></script> 
-    <script src="src/svd.js"></script> 
-    <script src="/src/posit1.js"></script> 
-    <script src="/src/cv.js"></script> 
-    <script src="src/aruco.js" defer></script>
-    
-  <script>
-    var video, canvas, context, imageData, detector, posit;    
- 
-    var markerSize = 150.0; //this should be the real life size in millimetres of your marker
+    <!-- Add a reference to the Azure Maps Rest Helper JavaScript file. -->
+    <script src="https://samples.azuremaps.com/lib/azure-maps/azure-maps-helper.min.js"></script>
 
-    function onLoad(){
-      video = document.getElementById("video");
-      canvas = document.getElementById("canvas");
-      context = canvas.getContext("2d");
-    
-      canvas.width = parseInt(canvas.style.width);
-      canvas.height = parseInt(canvas.style.height);    
-      
-      navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: {
-            facingMode: 'environment' // This tries to get the back facing camera when using a phone
-          }
-        })
-          .then(stream => video.srcObject = stream)
-          .catch(console.error);
+    <script>
+        var map, datasource;
 
-        detector = new AR.Detector();
-        posit = new POS.Posit(markerSize, canvas.width);
+        // Your Azure Maps client id for accessing your Azure Maps account.
+        var azureMapsClientId = 'e6b6ab59-eb5d-4d25-aa57-581135b927f0';
 
-        requestAnimationFrame(tick);
-      }
-    
-    function tick(){
-      requestAnimationFrame(tick);
-      
-      if (video.readyState === video.HAVE_ENOUGH_DATA){
-        snapshot();
+        // URL to your authentication service that retrieves an Microsoft Entra ID Token.
+        var tokenServiceUrl = 'https://samples.azuremaps.com/api/GetAzureMapsToken';
 
-        var markers = detector.detect(imageData);
-        drawCorners(markers);
-        drawId(markers);
-
-        drawCornerPosition(markers);
-        showDistance(markers);
-      }
-    }
-
-    function snapshot(){
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    }
-    
-    function calculateDistance(point1, point2) {
-      const xDiff = point2[0] - point1[0];
-      const yDiff = point2[1] - point1[1];
-      const zDiff = point2[2] - point1[2];
-      
-      return Math.sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
-  }
-
-  // Show the distance between the first two markers we can see
-    function showDistance(markers) {
-      if (markers.length >= 2) {
-        
-        var corner, corners1, corners2;
-        
-        corners1 = markers[0].corners;
-        corners2 = markers[1].corners;
-
-        // Documentation says to center the corners on the canvas
-        for (i = 0; i < corners1.length; ++ i){
-          corner = corners1[i];
-          
-          corner.x = corner.x - (canvas.width / 2);
-          corner.y = (canvas.height / 2) - corner.y;
-        }
-        
-        // Get the estimated 3d position of the marker
-        pose1 = posit.pose(corners1);
-        
-        // Documentation says to center the corners on the canvas
-        for (i = 0; i < corners2.length; ++ i){
-          corner = corners2[i];
-          
-          corner.x = corner.x - (canvas.width / 2);
-          corner.y = (canvas.height / 2) - corner.y;
-        }
-        
-        pose2 = posit.pose(corners2);
-
-        var d = document.getElementById("distance");
-        // pose.bestTranslation first 3 indexes are position
-        var distance = calculateDistance(pose1.bestTranslation, pose2.bestTranslation);
-        d.innerHTML = "Distance: " + distance;
-
-        if (distance > markerSize*2) {
-          d.style.color = "red";
-        } else {
-          d.style.color = "blue";
+        // Function to retrieve an Azure Maps access token.
+        function getToken(resolve, reject, map) {
+            fetch(tokenServiceUrl).then(response => {
+                if (response.ok) {
+                    return response.text();
+                }
+                throw new Error('Failed to retrieve Azure Maps token.');
+            }).then(token => resolve(token)).catch(error => reject(error));
         }
 
-        updateProxemicButton(distance, 200, 400, 600);
-      }
-    };
-          
-    function updateProxemicButton(howClose, near, medium, far) {
-      const button = document.getElementById("proxemicButton");
-      if (button != null) {
-        if (howClose <= near) {
-          button.textContent = "Too close!";
-        } else if (howClose > near && howClose <= medium) {
-          button.textContent = "Just right.";
-        } else if (howClose > medium && howClose <= far) {
-          button.textContent = "A little closer";
-        } else {
-          button.textContent = "I'm lonely";
+        function getMap() {
+            // Create a new map
+            map = new atlas.Map('myMap', {
+                view: 'Auto',
+
+                //Add authentication details for connecting to Azure Maps.
+                authOptions: {
+                    //Use Microsoft Entra ID authentication.
+                    authType: 'anonymous',
+                    clientId: azureMapsClientId,
+                    getToken: getToken
+
+                    // Alternatively, use an Azure Maps key.
+                    // Get an Azure Maps key at https://azure.com/maps.
+                    // NOTE: The primary key should be used as the key.
+                    //authType: 'subscriptionKey',
+                    //subscriptionKey: '[YOUR_AZURE_MAPS_KEY]'
+                }
+            });
+
+            //Wait until the map resources are ready.
+            map.events.add('ready', function () {
+                // Add Traffic Flow to the Map
+                map.setTraffic({
+                    flow: "relative"
+                });
+
+                //Create a data source and add it to the map.
+                datasource = new atlas.source.DataSource();
+                map.sources.add(datasource);
+
+                //Add a layer for rendering the route lines and have it render under the map labels.
+                map.layers.add(new atlas.layer.LineLayer(datasource, null, {
+                    strokeColor: ['get', 'strokeColor'],
+                    strokeWidth: ['get', 'strokeWidth'],
+                    lineJoin: 'round',
+                    lineCap: 'round'
+                }), 'labels');
+
+                //Add a layer for rendering point data.
+                map.layers.add(new atlas.layer.SymbolLayer(datasource, null, {
+                    iconOptions: {
+                        image: ['get', 'icon'],
+                        allowOverlap: true
+                    },
+                    textOptions: {
+                        textField: ['get', 'title'],
+                        offset: [0, 1.2]
+                    },
+                    filter: ['any', ['==', ['geometry-type'], 'Point'], ['==', ['geometry-type'], 'MultiPoint']] //Only render Point or MultiPoints in this layer.
+                }));
+
+                //Create the GeoJSON objects which represent the start and end point of the route.
+                var startPoint = new atlas.data.Feature(new atlas.data.Point([-122.356099, 47.580045]), {
+                    title: 'Fabrikam, Inc.',
+                    icon: 'pin-blue'
+                });
+
+                var endPoint = new atlas.data.Feature(new atlas.data.Point([-122.201164, 47.616940]), {
+                    title: 'Microsoft - Lincoln Square',
+                    icon: 'pin-round-blue'
+                });
+
+                //Add the data to the data source.
+                datasource.add([startPoint, endPoint]);
+
+                //Fit the map window to the bounding box defined by the start and end positions.
+                map.setCamera({
+                    bounds: atlas.data.BoundingBox.fromData([startPoint, endPoint]),
+                    padding: 100
+
+                });
+
+                //Start and end point input to the search route request
+                var query = startPoint.geometry.coordinates[1] + "," +
+                    startPoint.geometry.coordinates[0] + ":" +
+                    endPoint.geometry.coordinates[1] + "," +
+                    endPoint.geometry.coordinates[0];
+
+                //Make a search route request for a truck vehicle type
+                var truckRouteUrl = `https://{azMapsDomain}/route/directions/json?api-version=1.0&travelMode=truck&vehicleWidth=2&vehicleHeight=2&vehicleLength=5&vehicleLoadType=USHazmatClass2&query=${query}`;
+                processRequest(truckRouteUrl).then((directions) => {
+                    // Extract the first route from the directions.
+                    const route = directions.routes[0];
+
+                    // Combine all leg coordinates into a single array.
+                    const routeCoordinates = route.legs.flatMap(leg => leg.points.map(point => [point.longitude, point.latitude]));
+
+                    // Create a LineString from the route path points.
+                    const routeLine = new atlas.data.LineString(routeCoordinates);
+
+                    // Add the route line to the data source.
+                    // We want this to render below the car route which will likely be added to the data source faster, so insert it at index 0.
+                    datasource.add(
+                        new atlas.data.Feature(routeLine, {
+                            strokeColor: "#2272B9",
+                            strokeWidth: 9
+                        }),
+                        0
+                    );
+                });
+
+                var carRouteUrl = `https://{azMapsDomain}/route/directions/json?api-version=1.0&query=${query}`;
+                processRequest(carRouteUrl).then((directions) => {
+                    // Extract the first route from the directions.
+                    const route = directions.routes[0];
+
+                    // Combine all leg coordinates into a single array.
+                    const routeCoordinates = route.legs.flatMap(leg => leg.points.map(point => [point.longitude, point.latitude]));
+
+                    // Create a LineString from the route path points.
+                    const routeLine = new atlas.data.LineString(routeCoordinates);
+
+                    // Add the route line to the data source.
+                    // This will add the car route after the truck route.
+                    datasource.add(
+                        new atlas.data.Feature(routeLine, {
+                            strokeColor: "#B76DAB",
+                            strokeWidth: 5
+                        })
+                    );
+                });
+            });
         }
-      }
-    };
-
-    function drawCorners(markers){
-      var corners, corner, i, j;
-    
-      context.lineWidth = 3;
-
-      for (i = 0; i !== markers.length; ++ i){
-        corners = markers[i].corners;
-        
-        context.strokeStyle = "red";
-        context.beginPath();
-        
-        for (j = 0; j !== corners.length; ++ j){
-          corner = corners[j];
-          context.moveTo(corner.x, corner.y);
-          corner = corners[(j + 1) % corners.length];
-          context.lineTo(corner.x, corner.y);
+    </script>
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
         }
 
-        context.stroke();
-        context.closePath();
-        
-        context.strokeStyle = "green";
-        context.strokeRect(corners[0].x - 2, corners[0].y - 2, 4, 4);
-      }
-    }
-
-    function drawId(markers){
-      var corners, corner, x, y, i, j;
-      
-      context.strokeStyle = "green";
-      context.lineWidth = 1;
-      
-      for (i = 0; i !== markers.length; ++ i){
-        corners = markers[i].corners;
-        
-        x = Infinity;
-        y = Infinity;
-        
-        for (j = 0; j !== corners.length; ++ j){
-          corner = corners[j];
-          
-          x = Math.min(x, corner.x);
-          y = Math.min(y, corner.y);
+        #myMap {
+            width: 100%;
+            height: 100%;
         }
+    </style>
+</head>
 
-        context.strokeText(markers[i].id, x, y-10) // move it up a little so we don't cover the position
-      }
-    }
+<body onload="getMap()">
+    <div id="myMap"></div>
+</body>
 
-    function drawCornerPosition(markers){
-      var corners, corner, x, y, i, j, k, pose;
-      
-      context.strokeStyle = "blue";
-      context.lineWidth = 1;
-      
-      for (i = 0; i !== markers.length; ++ i){
-        corners = markers[i].corners;
-        
-        x = Infinity;
-        y = Infinity;
-        
-        for (j = 0; j !== corners.length; ++ j){
-          corner = corners[j];
-          
-          x = Math.min(x, corner.x);
-          y = Math.min(y, corner.y);
-        }
-
-        // Documentation says to center the corners on the canvas
-        for (k = 0; k < corners.length; ++ k){
-          corner = corners[k];
-          
-          corner.x = corner.x - (canvas.width / 2);
-          corner.y = (canvas.height / 2) - corner.y;
-        }
-        
-        // Get the estimated 3d position of the marker
-        pose = posit.pose(corners);
-        var positionInSpace = pose.bestTranslation;
-        context.strokeText(Math.trunc(positionInSpace[0]) + "," + 
-          Math.trunc(positionInSpace[1]) + "," + 
-          Math.trunc(positionInSpace[2]), x, y)
-      }
-    }
-
-
-    window.onload = onLoad;
-  </script>
-  </head>
-  <body>    
-    <div style="margin: 10px;"><strong>Distance between 2 markers</strong></div>
-    <video id="video" autoplay="true" style="display:none;"></video>
-    <!--
-If you are not making an AR application you don't actually have to show the canvas for the webcam
-Try setting the canvas to be hidden and the distance text and the button should still update.
-It is a bit tough to tell where you need to hold your markers are if the canvas is hidden
-but everything should still work.
-You can add the "hidden" attribute like below if you want to hide the webcam canvas
-<canvas hidden id="canvas" style="width:640px; height:480px;"></canvas>
--->
-    <canvas id="canvas" style="width:640px; height:480px;"></canvas>
-    
-    <div class="rectangle" id="smartUI">
-       <!--
-If you are faking a UI for your "smart" object you might display things in here
--->
-      <p>Fake UI for your smart object</p>
-      <div id="distance">Distance:</div>
-      <button id="smartObjectButton">Smart Object Button</button>
-    </div>
-    
-    <div  class="rectangle" id="displayUI">
-       <!--
-You might want to separate a Phone UI from what you are having as a fake smart UI.
--->
-      <p>UI for your Phone/Display</p>
-      <button id="proxemicButton">I'm Lonely</button>
-    </div>
-    
-    
-  </body>
-    <div style="margin: 15px;"><strong>Powered by <a href="https://damianofalcioni.github.io/js-aruco2/">js-aruco2</a></strong></div>
 </html>

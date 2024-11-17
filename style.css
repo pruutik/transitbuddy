@@ -203,3 +203,8 @@ h2 {
     margin: 20px;            /* Adds space around the rectangle */
     border-radius: 5px;      /* Optional: Rounds the corners */
 }
+
+#map { 
+  height: 1000px;
+  width: 1000px;
+}

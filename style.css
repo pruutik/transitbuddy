@@ -16,7 +16,7 @@ to this section's matching END comment to see page-specific styles.
 
 /* Our default values set as CSS variables */
 :root {
-  --color-bg: #69F7BE;
+  --color-bg: #CCC;
   --color-text-main: #000000;
   --color-text-header: #2800FF;
   --color-primary: #FFFF00;
@@ -208,7 +208,12 @@ h2 {
   height: 1000px;
   width: 1000px;
 } */
+/* video {
+  -webkit-transform: scaleX(-1);
+  transform: scaleX(-1);
+} */
 
 body, html {
+  display: flex;
   margin: 0;
 }

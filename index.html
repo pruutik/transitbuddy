@@ -4,7 +4,7 @@
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="https://glitch.com/favicon.ico" />
+    <!-- <link rel="icon" href="https://glitch.com/favicon.ico" /> -->
 
 
     <link rel="stylesheet" href="style.css" />
@@ -235,7 +235,7 @@ You can add the "hidden" attribute like below if you want to hide the webcam can
 -->
     <canvas hidden id="canvas" style="width:640px; height:480px;"></canvas>
 
-    <div id="box" style="background: red; width: 30px; height: 30px; position: absolute"></div>
+    <div id="box" hidden style="background: red; width: 30px; height: 30px; position: absolute"></div>
 <!-- <video id="camera"></video> -->
 <script type="module">
 import { HandLandmarker, FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision";
@@ -244,6 +244,7 @@ var canvas, context, imageData, detector, posit;
 
 const video = document.getElementById("video");
 const box = document.getElementById("box");
+let offset = {x:0,y:0};
 
 async function init() {
 navigator.mediaDevices.getUserMedia({ video: true })
@@ -262,14 +263,10 @@ runningMode: "video"
 });
 
 let anchor = {x:0,y:0};
-let offset = {x:0,y:0};
 let grabbed = false;
-let mapimage = new Image();
-mapimage.src = './map.png';
 let mapcanvas = document.getElementById('map');
 mapcanvas.width = window.innerWidth;
 mapcanvas.height = window.innerHeight;
-let mapctx = mapcanvas.getContext('2d');
 function loop() {
 window.requestAnimationFrame(loop);
 if (video.readyState === video.HAVE_ENOUGH_DATA){
@@ -281,6 +278,8 @@ if (video.readyState === video.HAVE_ENOUGH_DATA){
 
         drawCornerPosition(markers);
         showDistance(markers);
+        identifyMarkers(markers);
+        drawMap();
       }
 let results = handLandmarker.detectForVideo(video, performance.now());
 // console.log(results);
@@ -310,7 +309,7 @@ if(Math.sqrt(((indexPos.x-thumbPos.x)*canvas.width/ratio)**2+((indexPos.y-thumbP
   grabbed = false;
 }
 }
-mapctx.drawImage(mapimage,-2000/2+offset.x/10,-2000/2+offset.y/10,2000,2000);
+
 }
 loop();
 };
@@ -371,7 +370,7 @@ loop();
 function showDistance(markers) {
       if (markers.length >= 2) {
         
-        var corner, corners1, corners2;
+        var i, corner, corners1, corners2, pose1, pose2;
         
         corners1 = markers[0].corners;
         corners2 = markers[1].corners;
@@ -491,6 +490,58 @@ function drawId(markers){
         context.strokeText(Math.trunc(positionInSpace[0]) + "," + 
           Math.trunc(positionInSpace[1]) + "," + 
           Math.trunc(positionInSpace[2]), x, y)
+      }
+    }
+
+    let person1 = false;
+    let person2 = false;
+    let person3 = false;
+    let mapimage = new Image();
+    mapimage.src = './map.png';
+    let mapimage1 = new Image();
+    mapimage1.src = './map1.png';
+    let mapimage2 = new Image();
+    mapimage2.src = './map2.png';
+    let mapimageboth = new Image();
+    mapimageboth.src = './mapboth.png';
+    let mapctx = document.getElementById('map').getContext('2d');
+
+
+    function drawMap(){
+      if(person1&&person2){
+        mapctx.drawImage(mapimageboth,-4500/2-offset.x,-5000/2+offset.y,5000,5000);
+      }else if(person1){
+        mapctx.drawImage(mapimage1,-4500/2-offset.x,-5000/2+offset.y,5000,5000);
+      }else if(person2){
+        mapctx.drawImage(mapimage2,-4500/2-offset.x,-5000/2+offset.y,5000,5000);
+      }else{
+        mapctx.drawImage(mapimage,-4500/2-offset.x,-5000/2+offset.y,5000,5000);
+      }
+    }
+    function identifyMarkers(markers){
+      var i;
+      person1 = false;
+      person2 = false;
+      person3 = false;
+      for (i = 0; i < markers.length; i++) {
+        switch (markers[i].id) {
+          case 0:
+            //route1
+            console.log("route1");
+            person1 = true;
+            break;
+          case 1:
+            person2 = true;
+            //route2
+            break;
+          case 2:
+            person3 = true;
+            //wrong stop
+            break;
+          default:
+            
+            break;
+        }
       }
     }
 // init();

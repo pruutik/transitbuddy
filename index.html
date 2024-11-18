@@ -245,6 +245,9 @@ var canvas, context, imageData, detector, posit;
 const video = document.getElementById("video");
 const box = document.getElementById("box");
 let offset = {x:0,y:0};
+let mapcanvas = document.getElementById('map');
+mapcanvas.width = window.innerWidth;
+mapcanvas.height = window.innerHeight;
 
 async function init() {
 navigator.mediaDevices.getUserMedia({ video: true })
@@ -264,22 +267,20 @@ runningMode: "video"
 
 let anchor = {x:0,y:0};
 let grabbed = false;
-let mapcanvas = document.getElementById('map');
-mapcanvas.width = window.innerWidth;
-mapcanvas.height = window.innerHeight;
 function loop() {
 window.requestAnimationFrame(loop);
 if (video.readyState === video.HAVE_ENOUGH_DATA){
         snapshot();
 
         var markers = detector.detect(imageData);
-        drawCorners(markers);
-        drawId(markers);
+        // drawCorners(markers);
+        // drawId(markers);
 
-        drawCornerPosition(markers);
-        showDistance(markers);
+        // drawCornerPosition(markers);
+        // showDistance(markers);
         identifyMarkers(markers);
         drawMap();
+        openDrawingPad(markers);
       }
 let results = handLandmarker.detectForVideo(video, performance.now());
 // console.log(results);
@@ -544,6 +545,53 @@ function drawId(markers){
         }
       }
     }
+    function openDrawingPad(markers){
+      var corners, corner, x, y, i, j, k, pose;
+      
+      for (i = 0; i !== markers.length; ++ i){
+        corners = markers[i].corners;
+        if(markers[i].id>2)break;
+        
+        // x = Infinity;
+        // y = Infinity;
+        
+        // for (j = 0; j !== corners.length; ++ j){
+        //   corner = corners[j];
+          
+        //   x = Math.min(x, corner.x);
+        //   y = Math.min(y, corner.y);
+        // }
+
+        // Documentation says to center the corners on the canvas
+        for (k = 0; k < corners.length; ++ k){
+          corner = corners[k];
+          
+          corner.x = corner.x - (canvas.width / 2);
+          corner.y = (canvas.height / 2) - corner.y;
+        }
+        
+        // Get the estimated 3d position of the marker
+        pose = posit.pose(corners);
+        var positionInSpace = pose.bestTranslation;
+        // context.strokeText(Math.trunc(positionInSpace[0]) + "," + 
+        //   Math.trunc(positionInSpace[1]) + "," + 
+        //   Math.trunc(positionInSpace[2]), x, y)
+
+        const drawCanvas = document.getElementById("drawCanvas");
+        if(Math.trunc(positionInSpace[2])<600 && mapcanvas.width === window.innerWidth){
+          //open drawing space
+          mapcanvas.width = window.innerWidth/2;
+          drawCanvas.style = "";
+          console.log("opening pad")
+          break;
+        }else if(Math.trunc(positionInSpace[2])>=600 && mapcanvas.width === window.innerWidth/2){
+          //close drawing space
+          mapcanvas.width = window.innerWidth;
+          drawCanvas.style = "display: none;";
+        }
+      }
+
+    }
 // init();
 </script>
 
@@ -552,7 +600,7 @@ function drawId(markers){
 
 
 
-<canvas id="drawCanvas"></canvas>
+<canvas id="drawCanvas" style="display: none;"></canvas>
   <div hidden>
     <button id="clearButton">Clear</button>
   </div>

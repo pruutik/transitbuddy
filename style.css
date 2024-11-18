@@ -217,3 +217,9 @@ body, html {
   display: flex;
   margin: 0;
 }
+
+#wrongstop{
+  font-size: xx-large;
+  position: absolute;
+  margin: 10px;
+}

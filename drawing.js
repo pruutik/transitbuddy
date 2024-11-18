@@ -27,6 +27,7 @@ let clearButton = document.getElementById("clearButton");
 let theCanvas = document.getElementById("drawCanvas");
 theCanvas.width = window.innerWidth/2;
 theCanvas.height = window.innerHeight;
+// theCanvas.style = "display: none;";
 let theContext = prepareContext(theCanvas);
 let shouldDraw = false;
 

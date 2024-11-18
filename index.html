@@ -518,6 +518,13 @@ function drawId(markers){
       }else{
         mapctx.drawImage(mapimage,-4500/2-offset.x,-5000/2+offset.y,5000,5000);
       }
+
+      let wrongstopspan = document.getElementById("wrongstop");
+      if(person3){
+        wrongstopspan.style = ""
+      }else{
+        wrongstopspan.style = "display:none;"
+      }
     }
     function identifyMarkers(markers){
       var i;
@@ -595,12 +602,14 @@ function drawId(markers){
 // init();
 </script>
 
+<span id="wrongstop" style="display: none;">This isn't your bus stop, Prutik!</span>
+
 <canvas id="map"></canvas>
 
 
 
 
-<canvas id="drawCanvas" style="display: none;"></canvas>
+<canvas id="drawCanvas"></canvas>
   <div hidden>
     <button id="clearButton">Clear</button>
   </div>

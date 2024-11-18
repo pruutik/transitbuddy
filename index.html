@@ -235,7 +235,7 @@ You can add the "hidden" attribute like below if you want to hide the webcam can
 -->
     <canvas hidden id="canvas" style="width:640px; height:480px;"></canvas>
 
-    <!-- <div id="box" style="background: red; width: 30px; height: 30px; position: absolute"></div> -->
+    <div id="box" style="background: red; width: 30px; height: 30px; position: absolute"></div>
 <!-- <video id="camera"></video> -->
 <script type="module">
 import { HandLandmarker, FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision";
@@ -260,6 +260,16 @@ delegate: "GPU",
 numHands: 2,
 runningMode: "video"
 });
+
+let anchor = {x:0,y:0};
+let offset = {x:0,y:0};
+let grabbed = false;
+let mapimage = new Image();
+mapimage.src = './map.png';
+let mapcanvas = document.getElementById('map');
+mapcanvas.width = window.innerWidth;
+mapcanvas.height = window.innerHeight;
+let mapctx = mapcanvas.getContext('2d');
 function loop() {
 window.requestAnimationFrame(loop);
 if (video.readyState === video.HAVE_ENOUGH_DATA){
@@ -280,14 +290,27 @@ let thumbPos = results.landmarks[0][4]
 let ratio = Math.sqrt(((results.landmarks[0][5].x-results.landmarks[0][0].x)*canvas.width)**2+((results.landmarks[0][5].y-results.landmarks[0][0].y)*canvas.height)**2)
 console.log(Math.sqrt(((indexPos.x-thumbPos.x)*canvas.width/ratio)**2+((indexPos.y-thumbPos.y)*canvas.height/ratio)**2));
 if(Math.sqrt(((indexPos.x-thumbPos.x)*canvas.width/ratio)**2+((indexPos.y-thumbPos.y)*canvas.height/ratio)**2)<0.4){
+  let x = indexPos.x * canvas.width;
+  let y = indexPos.y * canvas.height;
+  if(grabbed === false){
+    anchor.x = x - offset.x;
+    anchor.y = y - offset.y;
+  }
+  grabbed = true;
 
-  let x = indexPos.x * canvas.width
-  let y = indexPos.y * canvas.height
+  offset.x = x - anchor.x;
+  offset.y = y - anchor.y;
+
+
+
   console.log([x, y])
   box.style.left = `${x}px`
   box.style.top = `${y}px`
+}else{
+  grabbed = false;
 }
 }
+mapctx.drawImage(mapimage,-2000/2+offset.x/10,-2000/2+offset.y/10,2000,2000);
 }
 loop();
 };
@@ -297,7 +320,7 @@ loop();
     function onLoad(){
       canvas = document.getElementById("canvas");
       context = canvas.getContext("2d");
-    
+
       canvas.width = parseInt(canvas.style.width);
       canvas.height = parseInt(canvas.style.height);    
       
@@ -313,7 +336,8 @@ loop();
         detector = new AR.Detector();
         posit = new POS.Posit(markerSize, canvas.width);
 
-        requestAnimationFrame(tick);
+        // requestAnimationFrame(tick);
+        init();
       }
       window.onload = onLoad;
     
@@ -469,11 +493,15 @@ function drawId(markers){
           Math.trunc(positionInSpace[2]), x, y)
       }
     }
-init();
+// init();
 </script>
 
-<canvas id="map" style="height: 100%; width: 50%;"></canvas>
-<canvas id="drawCanvas" style="height: 100%; width: 50%;"></canvas>
+<canvas id="map"></canvas>
+
+
+
+
+<canvas id="drawCanvas"></canvas>
   <div hidden>
     <button id="clearButton">Clear</button>
   </div>

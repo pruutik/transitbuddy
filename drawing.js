@@ -25,6 +25,8 @@ function setLineProperties(context) {
 
 let clearButton = document.getElementById("clearButton");
 let theCanvas = document.getElementById("drawCanvas");
+theCanvas.width = window.innerWidth;
+theCanvas.height = window.innerHeight;
 let theContext = prepareContext(theCanvas);
 let shouldDraw = false;
 
